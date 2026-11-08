@@ -1,52 +1,89 @@
 # PulseSync
 
-> **Offline-first emergency & field operations dispatch system.**
+<div align="center">
 
-PulseSync is built for rapid and resilient coordination during critical field emergencies with zero or intermittent network connectivity. Responders can draft incidents, capture real-time GPS coordinates, visualize situations on interactive maps, and automatically synchronize bi-directionally with HQ when connectivity is restored.
+![PulseSync Logo Banner](https://img.shields.io/badge/PulseSync-Offline--First%20Emergency%20Dispatch-D32F2F?style=for-the-badge&logo=shield&logoColor=white)
+
+[![Flutter Version](https://img.shields.io/badge/Flutter-3.47.2-02569B?style=flat-square&logo=flutter&logoColor=white)](https://flutter.dev)
+[![FastAPI Version](https://img.shields.io/badge/FastAPI-0.110%2B-009688?style=flat-square&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
+[![Python Version](https://img.shields.io/badge/Python-3.11%2B-3776AB?style=flat-square&logo=python&logoColor=white)](https://python.org)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-336791?style=flat-square&logo=postgresql&logoColor=white)](https://postgresql.org)
+[![Redis](https://img.shields.io/badge/Redis-7%20Pub%2FSub-DC382D?style=flat-square&logo=redis&logoColor=white)](https://redis.io)
+[![Drift SQLite](https://img.shields.io/badge/Drift%20SQLite-2.20.0-003B57?style=flat-square&logo=sqlite&logoColor=white)](https://drift.simonbinder.eu)
+[![Tests Passing](https://img.shields.io/badge/Tests-100%25%20Passing-success?style=flat-square&logo=checkmarx&logoColor=white)](#-automated-testing-100-pass)
+[![License](https://img.shields.io/badge/License-MIT-blue?style=flat-square)](#)
+
+<p align="center">
+  <b>Resilient, offline-first emergency coordination & disaster dispatch system engineered for zero-connectivity environments.</b>
+</p>
+
+</div>
 
 ---
 
-## 🏗️ Architecture & Technology Stack
+## 📌 Overview
+
+During natural disasters (flash floods, earthquakes, structural collapses, wilderness search-and-rescue), telecommunications infrastructure frequently collapses. Standard emergency response apps fail completely without cell tower connections.
+
+**PulseSync** is an industrial-grade, offline-first disaster response and field dispatch platform. Responders can draft incidents, record voice situation memos, capture GPS coordinates, calculate real-time walking/driving ETAs, and navigate dynamic radar perimeters—even in complete dead zones. The moment connectivity is restored, PulseSync executes an **idempotent versioned synchronization protocol** with the central FastAPI & Redis command center.
+
+---
+
+## 🏗️ System Architecture
 
 ```
-                          ┌────────────────────────┐
-                          │   Flutter Mobile App   │
-                          │  (Riverpod + Drift DB) │
-                          └───────────┬────────────┘
-                                      │
-            ┌─────────────────────────┴─────────────────────────┐
-            │ Offline Mode (Local SQLite)   Online Mode (REST/WS)
-            ▼                                                   ▼
-┌───────────────────────┐                       ┌────────────────────────┐
-│ Drift Local Database  │                       │    FastAPI Backend     │
-│ - Incidents           │                       │  (Async Python 3.11+)  │
-│ - SyncQueue           │                       └───────────┬────────────┘
-│ - BreadcrumbLocations │                                   │
-└───────────────────────┘                         ┌─────────┴─────────┐
-                                                  ▼                   ▼
-                                         ┌─────────────────┐ ┌────────────────┐
-                                         │ PostgreSQL 16   │ │ Redis 7 PubSub │
-                                         │ (Asyncpg 2.0)   │ │ & WebSockets   │
-                                         └─────────────────┘ └────────────────┘
+                          ┌───────────────────────────────────────┐
+                          │          Flutter Mobile App           │
+                          │   (Dart 3.13+, Riverpod 2.5, Drift)   │
+                          └───────────────────┬───────────────────┘
+                                              │
+                    ┌─────────────────────────┴─────────────────────────┐
+                    │ Zero-Connectivity (Offline)      Active Wi-Fi / LTE
+                    ▼                                                   ▼
+        ┌───────────────────────┐                           ┌────────────────────────┐
+        │  Drift Local SQLite   │                           │    FastAPI Backend     │
+        │  - LocalIncidents     │                           │  (Python 3.11+, ASGI)  │
+        │  - SyncQueue (Tx)     │                           └───────────┬────────────┘
+        │  - CachedLocations    │                                       │
+        └───────────────────────┘                             ┌─────────┴─────────┐
+                                                              ▼                   ▼
+                                                     ┌─────────────────┐ ┌────────────────┐
+                                                     │ PostgreSQL 16   │ │ Redis 7 PubSub │
+                                                     │ (Asyncpg + 2.0) │ │ & WebSockets   │
+                                                     └─────────────────┘ └────────────────┘
 ```
 
-### Components
+---
 
-- **Backend (`/backend`)**:
-  - **Framework**: Python 3.11+, FastAPI (fully async ASGI)
-  - **Database & ORM**: PostgreSQL 16 + Async SQLAlchemy 2.0 (`asyncpg` driver), async SQLite for zero-dependency unit tests
-  - **Event Pub/Sub & WebSockets**: Redis 7 Pub/Sub with persistent connection manager for real-time dispatch events
-  - **Security**: JWT Bearer token authentication with Role-Based Access Control (`dispatcher`, `responder`, `admin`)
-  - **Geospatial Engine**: Haversine formula calculation for ranking responders by proximity to incident coordinates
-  - **Containerization**: Multi-stage `Dockerfile` + root `docker-compose.yml`
+## 🌟 Key Features & Innovations
 
-- **Mobile (`/mobile`)**:
-  - **Framework**: Flutter (Dart 3+)
-  - **State Management**: Riverpod (`flutter_riverpod`)
-  - **Offline-First Storage**: Drift (`drift` + `sqlite3`)
-  - **Network Monitor**: `connectivity_plus` with background sync triggers
-  - **Interactive Mapping**: `flutter_map` with OpenStreetMap raster tiles
-  - **Location Services**: `geolocator` GPS integration
+### 1. 🔄 True Offline-First Sync Architecture
+- **Drift SQLite Local Storage:** Every incident report, location breadcrumb, and triage tag commits locally before any network call.
+- **Idempotent Push (`POST /api/v1/sync/push`):** Deduplicates records using unique UUID `client_id`s and optimistic version numbers.
+- **Incremental Delta Pull (`GET /api/v1/sync/pull?since={timestamp}`):** Fetches only records updated since last watermark to minimize bandwidth consumption.
+- **Auto-Sync Listener:** Uses `connectivity_plus` to automatically push queued records the instant Wi-Fi or cellular network returns.
+- **LAN Discovery & Cleartext Support:** Configured for seamless physical device testing (`android:usesCleartextTraffic="true"`) with an in-app **Backend Server IP** configuration dialog.
+
+### 2. 📍 Tactical Geospatial & Proximity Engine
+- **India Default Centering & Live GPS Tracking:** Defaults to India coordinates (`20.5937° N, 78.9629° E`) with live pulsing user locator.
+- **Dynamic Radar Hazard Rings:**
+  - 🔴 **500m Red Hazard Ring:** Dangerous impact zone requiring evacuation or protective gear.
+  - 🟠 **1,000m Orange Warning Ring:** Controlled response staging zone.
+  - 🔵 **2,500m Advisory Ring:** Safe perimeter for logistics.
+- **Live Distance & ETA Calculation:** Haversine great-circle distance math computes live walking and driving ETA on every incident card.
+- **Interactive Detail Bottom Sheet:** Alerts responders if they are in the **500m Hazard Zone**, provides a **"Show on Map"** camera swoop button, and allows 1-tap status updates (`Reported` $\to$ `In Progress` $\to$ `Resolved`).
+
+### 3. 🚨 Life-Saving Emergency Suite
+- **1-Tap SOS Distress Beacon:** Immediate critical alert dispatch with GPS coordinates and visual pulsation.
+- **🎙️ Field Audio Voice Memo Recorder:** 30-second situational audio recording with live timer and playback safeguards for situations where typing is hazardous.
+- **Offline First-Aid Survival Guide:** 100% offline, zero-network medical instructions for CPR, Severe Bleeding & Hemorrhage, Burn Care, Choking (Heimlich), and Snakebites.
+- **Night Rescue Strobe Beacon:** High-visibility optical signaling tool with Fast Strobe frequency, SOS Morse Code (`... --- ...`), and Solid High-Beam illumination.
+- **Quick Triage Chips:** 1-tap rapid incident tagging (`⚠️ Trapped People`, `🔥 Active Flames`, `🩸 Critical Injury`, `⚡ Live Wire`, `🌊 High Water`).
+
+### 4. 🌗 Dual Tactical Theming
+- **Dark Tactical Mode (Default):** Deep midnight palette (`#0F141A`) with glowing crimson accents (`#FF5252`) and charcoal cards (`#19202A`) for night missions and battery longevity.
+- **Light Clean Mode:** High-contrast daylight emergency dispatch palette (`#F4F6F9`) with crisp white cards (`#FFFFFF`).
+- Smooth 360° rotating animated toggle in AppBar and dedicated switch in the navigation drawer.
 
 ---
 
@@ -57,7 +94,7 @@ pulsesync/
 ├── backend/
 │   ├── app/
 │   │   ├── api/
-│   │   │   ├── deps.py               # Dependency injection (Auth, DB, RBAC)
+│   │   │   ├── deps.py               # Auth, DB, and Field Responder fallback dependencies
 │   │   │   └── v1/
 │   │   │       ├── api.py            # API V1 router aggregation
 │   │   │       └── endpoints/
@@ -76,23 +113,30 @@ pulsesync/
 │   │   ├── services/                 # Geo Haversine & WebSocket connection manager
 │   │   └── main.py                   # FastAPI application factory
 │   ├── docker/
-│   │   └── Dockerfile                # Production-ready multi-stage image
-│   ├── tests/                        # Full test suite (Auth, Geo, Sync, Incidents, WS)
+│   │   └── Dockerfile                # Production multi-stage image
+│   ├── tests/                        # 8 passing test suites (Auth, Geo, Sync, Incidents, WS)
 │   ├── requirements.txt
-│   ├── .env.example
 │   └── README.md
 ├── mobile/
 │   ├── lib/
 │   │   ├── core/                     # Constants and ApiClient
 │   │   ├── data/local/               # Drift database tables, DAOs & generated code
-│   │   ├── logic/                    # Riverpod providers & background SyncService
-│   │   ├── views/                    # IncidentListScreen, IncidentReportScreen, MapScreen
-│   │   └── main.dart                 # Application entrypoint
-│   ├── test/                         # Drift DB tests & widget smoke tests
+│   │   ├── logic/                    # Riverpod providers, ThemeNotifier, & SyncService
+│   │   ├── views/
+│   │   │   ├── incident_list_screen.dart   # Main feed with Search, Filters, KPIs
+│   │   │   ├── incident_report_screen.dart # Form with Audio Memo & Triage Chips
+│   │   │   ├── incident_detail_modal.dart  # Tactical proximity, ETA & Map Jump
+│   │   │   ├── map_screen.dart             # OpenStreetMap with radar rings
+│   │   │   ├── emergency_guide_screen.dart # 100% offline First-Aid guide
+│   │   │   ├── night_beacon_screen.dart    # Optical Morse SOS & Strobe
+│   │   │   └── sos_beacon_dialog.dart      # 1-tap instant distress beacon
+│   │   └── main.dart                 # Application entrypoint with Dual Themes
+│   ├── test/                         # 5 passing widget & Drift unit tests
 │   ├── pubspec.yaml
 │   └── README.md
-├── docker-compose.yml
-├── .gitignore
+├── docker-compose.yml                # Multi-container orchestration (FastAPI + PG16 + Redis7)
+├── PROJECT_REPORT.md                 # Complete engineering & architectural evaluation report
+├── pulsesync.apk                     # Single installable Android application package
 └── README.md
 ```
 
@@ -102,84 +146,75 @@ pulsesync/
 
 ### 1. Backend Service
 
-#### Using Docker Compose (Recommended)
+#### Option A: Docker Compose (Recommended)
 ```bash
 docker compose up --build
 ```
-This spins up:
-- **FastAPI**: `http://localhost:8000` (Interactive docs at `/api/v1/docs`)
-- **PostgreSQL**: `localhost:5432`
-- **Redis**: `localhost:6379`
+Spins up:
+- **FastAPI**: `http://localhost:8000` (Interactive docs at `http://localhost:8000/api/v1/docs`)
+- **PostgreSQL 16**: `localhost:5432`
+- **Redis 7**: `localhost:6379`
 
-#### Running Locally with Python
-```bash
+#### Option B: Running Locally with Python
+```powershell
 cd backend
 python -m venv .venv
-# On Windows:
-.venv\Scripts\activate
-# On Linux/macOS:
-source .venv/bin/activate
-
+.\.venv\Scripts\activate
 pip install -r requirements.txt
-uvicorn app.main:app --reload --port 8000
+
+# Run with host 0.0.0.0 so physical mobile devices on Wi-Fi can sync:
+uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 ```
+
+---
 
 ### 2. Mobile Application
 
-```bash
+```powershell
 cd mobile
 flutter pub get
-dart run build_runner build --delete-conflicting-outputs
 
-# Run on your target device:
+# Run on target platform:
 flutter run -d windows    # Windows Desktop
-flutter run -d chrome     # Web
-flutter run -d android    # Android device/emulator
+flutter run -d chrome     # Web browser
+flutter run -d android    # Connected Android device/emulator
 ```
 
----
-
-## 🔄 Offline-First Sync Protocol
-
-PulseSync implements an **idempotent versioned synchronization protocol**:
-
-1. **Client ID Guarantee**: Every entity created on a mobile device is stamped with a UUID `client_id` and initial `version: 1`.
-2. **Local Commit**: Incident reports and responder location updates are stored directly in Drift SQLite and queued in `SyncQueue` before any HTTP network calls are made.
-3. **Idempotent Push (`POST /api/v1/sync/push`)**:
-   - The client pushes batches of incidents and location coordinates.
-   - If an incident `client_id` already exists on the server, the server compares versions:
-     - Newer version $\to$ updates record, increments version, and broadcasts update.
-     - Identical/older version $\to$ returns server's current record safely without duplication or errors.
-4. **Delta Pull (`GET /api/v1/sync/pull?since={timestamp}`)**:
-   - The client fetches all records updated since its last sync watermark.
-   - The server returns matching records and provides a new `server_timestamp`.
-5. **Auto-Reconnect Flush**: `connectivity_plus` actively monitors network transitions. When the device returns from dead zones (`none` $\to$ `wifi`/`mobile`), the sync queue flushes automatically.
+#### Installing on Physical Android Device:
+Copy the pre-built single APK [`pulsesync.apk`](file:///C:/Users/prachi/OneDrive/Desktop/pulsesync/pulsesync.apk) to your phone and install directly.
 
 ---
 
-## 🧪 Automated Testing
+## 🧪 Automated Testing (100% Pass)
 
-### Backend Unit & Integration Tests (100% Pass)
-```bash
+### Backend Pytest Suite
+```powershell
 cd backend
-.venv\Scripts\pytest -v
+.\.venv\Scripts\pytest -v
 ```
-Tests cover:
-- Health check verification
-- JWT user registration, password hashing, and authentication flow
-- Role-Based Access Control (`dispatcher`, `responder`, `admin`)
-- Haversine great-circle distance accuracy & nearest responder ranking
-- Incident creation, lifecycle updates, and optimistic locking
-- Push and pull idempotency & conflict handling
-- WebSocket token authorization and live ping/pong
+- ✅ `test_health_check` (DB & Redis connection verification)
+- ✅ `test_register_and_login_flow` (JWT hashing & lifecycle)
+- ✅ `test_role_based_access_control` (RBAC dispatcher/responder permissions)
+- ✅ `test_haversine_distance_known_points` (Geospatial math accuracy)
+- ✅ `test_rank_responders_by_proximity` (Proximity ranking engine)
+- ✅ `test_incident_lifecycle` (Creation, status transitions, versioning)
+- ✅ `test_sync_push_and_pull_idempotency` (Offline conflict-free sync)
+- ✅ `test_websocket_auth_and_ping` (Live real-time dispatch stream)
 
-### Mobile Tests & Static Analysis (100% Pass)
-```bash
+### Mobile Flutter Suite & Static Analysis
+```powershell
 cd mobile
-dart analyze
-flutter test
+flutter analyze   # 0 issues found
+flutter test      # 5 passing tests
 ```
-Tests cover:
-- Drift SQLite offline database persistence & sync status state changes
-- Sync queue enqueue and dequeue execution
-- Widget smoke tests for incident feeds and navigation
+- ✅ `drift_test.dart` (Offline SQLite save & state transition)
+- ✅ `drift_test.dart` (Sync queue enqueue & dequeue)
+- ✅ `widget_test.dart` (Incident list & navigation rendering)
+- ✅ `widget_test.dart` (Animated Dark/Light mode theme toggle)
+- ✅ `widget_test.dart` (Search bar & category filter chips)
+
+---
+
+## 📄 Documentation & Reports
+For an in-depth architectural and engineering analysis, see:
+- 📖 [**PROJECT_REPORT.md**](PROJECT_REPORT.md) — Comprehensive technical report, system breakdown, and future roadmap.
