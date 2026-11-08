@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
 import '../core/constants.dart';
+import '../logic/location/location_service.dart';
 import '../logic/providers.dart';
 import 'incident_report_screen.dart';
 import 'map_screen.dart';
@@ -18,6 +19,33 @@ class IncidentListScreen extends ConsumerStatefulWidget {
 class _IncidentListScreenState extends ConsumerState<IncidentListScreen> {
   int _currentIndex = 0;
   bool _isManualSyncing = false;
+  bool _isLocationEnabled = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkLocationPermission();
+  }
+
+  Future<void> _checkLocationPermission() async {
+    final granted = await LocationService.isLocationPermissionGranted();
+    if (mounted) setState(() => _isLocationEnabled = granted);
+  }
+
+  Future<void> _requestLocationPermission() async {
+    final granted = await LocationService.requestLocationPermissionWithDialog(context);
+    if (mounted) {
+      setState(() => _isLocationEnabled = granted);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            granted ? 'Location tracking is active.' : 'Location permission denied.',
+          ),
+          backgroundColor: granted ? Colors.teal : Colors.orange,
+        ),
+      );
+    }
+  }
 
   Color _getPriorityColor(String priority) {
     switch (priority) {
@@ -88,6 +116,14 @@ class _IncidentListScreenState extends ConsumerState<IncidentListScreen> {
         title: const Text('PulseSync Dispatch'),
         actions: [
           IconButton(
+            tooltip: _isLocationEnabled ? 'Location Tracking Allowed' : 'Allow Location Tracking',
+            icon: Icon(
+              _isLocationEnabled ? Icons.location_on : Icons.location_off,
+              color: _isLocationEnabled ? Colors.greenAccent : Colors.amberAccent,
+            ),
+            onPressed: _requestLocationPermission,
+          ),
+          IconButton(
             tooltip: 'Sync Now',
             icon: _isManualSyncing
                 ? const SizedBox(
@@ -125,6 +161,26 @@ class _IncidentListScreenState extends ConsumerState<IncidentListScreen> {
               ],
             ),
           ),
+          if (!_isLocationEnabled)
+            InkWell(
+              onTap: _requestLocationPermission,
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+                color: Colors.amber.shade900,
+                child: const Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.location_disabled_rounded, size: 16, color: Colors.white),
+                    SizedBox(width: 8),
+                    Text(
+                      'Location permission needed. Tap to allow.',
+                      style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold),
+                    ),
+                  ],
+                ),
+              ),
+            ),
           Expanded(
             child: incidentsAsync.when(
               data: (incidents) {

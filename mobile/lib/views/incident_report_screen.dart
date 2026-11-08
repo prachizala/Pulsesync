@@ -1,11 +1,11 @@
 import 'package:drift/drift.dart' as drift;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:geolocator/geolocator.dart';
 import 'package:uuid/uuid.dart';
 
 import '../core/constants.dart';
 import '../data/local/database.dart';
+import '../logic/location/location_service.dart';
 import '../logic/providers.dart';
 
 class IncidentReportScreen extends ConsumerStatefulWidget {
@@ -39,37 +39,20 @@ class _IncidentReportScreenState extends ConsumerState<IncidentReportScreen> {
   Future<void> _detectGpsLocation() async {
     setState(() => _isLoadingGps = true);
     try {
-      LocationPermission permission = await Geolocator.checkPermission();
-      if (permission == LocationPermission.denied) {
-        permission = await Geolocator.requestPermission();
-      }
-
-      if (permission == LocationPermission.whileInUse || permission == LocationPermission.always) {
-        final position = await Geolocator.getCurrentPosition(
-          desiredAccuracy: LocationAccuracy.high,
-          timeLimit: const Duration(seconds: 10),
-        );
+      final position = await LocationService.getCurrentPosition(context);
+      if (position != null) {
         setState(() {
           _latController.text = position.latitude.toStringAsFixed(6);
           _lonController.text = position.longitude.toStringAsFixed(6);
         });
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('GPS coordinates captured.')),
+            const SnackBar(
+              backgroundColor: Colors.teal,
+              content: Text('GPS coordinates captured successfully.'),
+            ),
           );
         }
-      } else {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Location permission denied. Enter manually.')),
-          );
-        }
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Could not fetch GPS: $e')),
-        );
       }
     } finally {
       if (mounted) setState(() => _isLoadingGps = false);
