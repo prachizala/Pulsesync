@@ -1,9 +1,9 @@
 class AppConstants {
   static const String appName = 'PulseSync';
   
-  // Base API configuration (Android emulator: 10.0.2.2, iOS / desktop: localhost)
-  static const String defaultBaseUrl = 'http://10.0.2.2:8000/api/v1';
-  static const String localhostBaseUrl = 'http://localhost:8000/api/v1';
+  // Base API configuration (Auto-detected Laptop Wi-Fi IP for physical phone sync)
+  static const String defaultBaseUrl = 'http://192.168.1.5:8000/api/v1';
+  static const String localhostBaseUrl = 'http://192.168.1.5:8000/api/v1';
 
   // India Default Geospatial Coordinates
   static const double defaultIndiaLat = 20.5937;

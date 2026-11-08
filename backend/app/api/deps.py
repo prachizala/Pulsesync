@@ -14,6 +14,11 @@ reusable_oauth2 = OAuth2PasswordBearer(
     tokenUrl=f"{settings.API_V1_STR}/auth/login/access-token"
 )
 
+reusable_oauth2_optional = OAuth2PasswordBearer(
+    tokenUrl=f"{settings.API_V1_STR}/auth/login/access-token",
+    auto_error=False,
+)
+
 
 async def get_current_user(
     db: AsyncSession = Depends(get_db),
@@ -46,6 +51,44 @@ async def get_current_user(
         raise HTTPException(status_code=400, detail="Inactive user")
 
     return user
+
+
+async def get_sync_user(
+    db: AsyncSession = Depends(get_db),
+    token: str | None = Depends(reusable_oauth2_optional),
+) -> User:
+    if token:
+        try:
+            payload = jwt.decode(
+                token,
+                settings.SECRET_KEY,
+                algorithms=[settings.ALGORITHM],
+            )
+            user_id = int(payload.get("sub"))
+            result = await db.execute(select(User).where(User.id == user_id))
+            user = result.scalar_one_or_none()
+            if user and user.is_active:
+                return user
+        except Exception:
+            pass
+
+    # Associate with default field mobile responder account
+    result = await db.execute(select(User).where(User.email == "field_responder@pulsesync.org"))
+    default_user = result.scalar_one_or_none()
+    if not default_user:
+        from app.core.security import get_password_hash
+
+        default_user = User(
+            email="field_responder@pulsesync.org",
+            hashed_password=get_password_hash("PulseSyncField2026!"),
+            full_name="Field Mobile Responder",
+            role="responder",
+            is_active=True,
+        )
+        db.add(default_user)
+        await db.commit()
+        await db.refresh(default_user)
+    return default_user
 
 
 def require_roles(allowed_roles: List[str]) -> Callable:

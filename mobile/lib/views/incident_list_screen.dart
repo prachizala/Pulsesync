@@ -98,6 +98,67 @@ class _IncidentListScreenState extends ConsumerState<IncidentListScreen> {
     }
   }
 
+  void _showServerIpDialog() {
+    final client = ref.read(apiClientProvider);
+    final controller = TextEditingController(text: client.baseUrl);
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Row(
+          children: [
+            Icon(Icons.dns_rounded, color: Colors.blueAccent),
+            SizedBox(width: 8),
+            Text('Backend Server URL', style: TextStyle(fontSize: 18)),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Enter the PC Wi-Fi IP address where the FastAPI server is running (e.g. http://192.168.1.5:8000/api/v1):',
+              style: TextStyle(fontSize: 13),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: controller,
+              decoration: const InputDecoration(
+                border: OutlineInputBorder(),
+                labelText: 'Server Base URL',
+                hintText: 'http://192.168.1.5:8000/api/v1',
+              ),
+              keyboardType: TextInputType.url,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              controller.text = AppConstants.defaultBaseUrl;
+            },
+            child: const Text('Reset Default'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              final newUrl = controller.text.trim();
+              if (newUrl.isNotEmpty) {
+                client.setBaseUrl(newUrl);
+                Navigator.pop(ctx);
+                _performManualSync();
+              }
+            },
+            child: const Text('Save & Sync'),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_currentIndex == 1) {
@@ -231,6 +292,15 @@ class _IncidentListScreenState extends ConsumerState<IncidentListScreen> {
               onTap: () {
                 Navigator.pop(context);
                 _performManualSync();
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.dns_rounded, color: Colors.blueAccent),
+              title: const Text('Backend Server IP'),
+              subtitle: Text(ref.read(apiClientProvider).baseUrl),
+              onTap: () {
+                Navigator.pop(context);
+                _showServerIpDialog();
               },
             ),
           ],

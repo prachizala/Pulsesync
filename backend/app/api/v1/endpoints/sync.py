@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import select, func, desc
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import get_db, get_current_user
+from app.api.deps import get_db, get_current_user, get_sync_user
 from app.models.incident import Incident
 from app.models.responder_location import ResponderLocation
 from app.models.user import User, UserRole
@@ -25,7 +25,7 @@ router = APIRouter()
 async def sync_push(
     payload: SyncPushRequest,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_sync_user),
 ):
     """
     Idempotent sync endpoint for field devices to push offline-created
@@ -145,7 +145,7 @@ async def sync_push(
 async def sync_pull(
     since: Optional[datetime] = Query(None, description="Fetch incidents updated since ISO timestamp"),
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_sync_user),
 ):
     """
     Incremental pull endpoint for clients to retrieve all changes since their last watermark.

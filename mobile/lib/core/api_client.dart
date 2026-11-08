@@ -3,10 +3,14 @@ import 'package:http/http.dart' as http;
 import 'constants.dart';
 
 class ApiClient {
-  final String baseUrl;
+  String baseUrl;
   String? _authToken;
 
-  ApiClient({this.baseUrl = AppConstants.localhostBaseUrl});
+  ApiClient({this.baseUrl = AppConstants.defaultBaseUrl});
+
+  void setBaseUrl(String url) {
+    baseUrl = url;
+  }
 
   void setAuthToken(String token) {
     _authToken = token;
