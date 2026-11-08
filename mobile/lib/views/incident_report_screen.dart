@@ -151,6 +151,35 @@ class _IncidentReportScreenState extends ConsumerState<IncidentReportScreen> {
                   border: OutlineInputBorder(),
                 ),
               ),
+              const SizedBox(height: 8),
+              // Triage Quick-Chips
+              const Text('Quick Triage Tags (Tap to add):', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 4),
+              Wrap(
+                spacing: 6,
+                runSpacing: 4,
+                children: [
+                  '⚠️ Trapped People',
+                  '🔥 Active Flames',
+                  '🩸 Critical Injury',
+                  '⚡ Live Wire',
+                  '🌊 High Water',
+                  '🧱 Structural Collapse',
+                ].map((tag) {
+                  return ActionChip(
+                    label: Text(tag, style: const TextStyle(fontSize: 11)),
+                    padding: const EdgeInsets.symmetric(horizontal: 4),
+                    onPressed: () {
+                      final current = _descriptionController.text;
+                      if (current.isEmpty) {
+                        _descriptionController.text = tag;
+                      } else {
+                        _descriptionController.text = '$current, $tag';
+                      }
+                    },
+                  );
+                }).toList(),
+              ),
               const SizedBox(height: 16),
               DropdownButtonFormField<String>(
                 initialValue: _selectedCategory,
@@ -160,6 +189,7 @@ class _IncidentReportScreenState extends ConsumerState<IncidentReportScreen> {
                   border: OutlineInputBorder(),
                 ),
                 items: const [
+                  DropdownMenuItem(value: AppConstants.categorySOS, child: Text('🚨 SOS Distress Beacon')),
                   DropdownMenuItem(value: AppConstants.categoryFire, child: Text('🔥 Fire & Hazard')),
                   DropdownMenuItem(value: AppConstants.categoryMedical, child: Text('🚑 Medical Emergency')),
                   DropdownMenuItem(value: AppConstants.categoryFlood, child: Text('🌊 Flood / Natural Disaster')),

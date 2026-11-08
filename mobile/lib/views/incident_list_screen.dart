@@ -6,8 +6,11 @@ import 'package:intl/intl.dart';
 import '../core/constants.dart';
 import '../logic/location/location_service.dart';
 import '../logic/providers.dart';
+import 'emergency_guide_screen.dart';
 import 'incident_report_screen.dart';
 import 'map_screen.dart';
+import 'night_beacon_screen.dart';
+import 'sos_beacon_dialog.dart';
 
 class IncidentListScreen extends ConsumerStatefulWidget {
   const IncidentListScreen({super.key});
@@ -63,6 +66,8 @@ class _IncidentListScreenState extends ConsumerState<IncidentListScreen> {
 
   IconData _getCategoryIcon(String category) {
     switch (category) {
+      case AppConstants.categorySOS:
+        return Icons.crisis_alert_rounded;
       case AppConstants.categoryFire:
         return Icons.local_fire_department_rounded;
       case AppConstants.categoryMedical:
@@ -115,6 +120,21 @@ class _IncidentListScreenState extends ConsumerState<IncidentListScreen> {
       appBar: AppBar(
         title: const Text('PulseSync Dispatch'),
         actions: [
+          // 1-Tap SOS Emergency Beacon Button
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 4.0),
+            child: ElevatedButton.icon(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.redAccent,
+                foregroundColor: Colors.white,
+                elevation: 4,
+                padding: const EdgeInsets.symmetric(horizontal: 10),
+              ),
+              icon: const Icon(Icons.crisis_alert_rounded, size: 16),
+              label: const Text('SOS', style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 1.1)),
+              onPressed: () => SosBeaconDialog.show(context),
+            ),
+          ),
           IconButton(
             tooltip: _isLocationEnabled ? 'Location Tracking Allowed' : 'Allow Location Tracking',
             icon: Icon(
@@ -135,6 +155,86 @@ class _IncidentListScreenState extends ConsumerState<IncidentListScreen> {
             onPressed: _isManualSyncing ? null : _performManualSync,
           ),
         ],
+      ),
+      drawer: Drawer(
+        child: ListView(
+          padding: EdgeInsets.zero,
+          children: [
+            const DrawerHeader(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [Color(0xFF1E1E2C), Color(0xFFE53935)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  Icon(Icons.shield_rounded, size: 40, color: Colors.white),
+                  SizedBox(height: 8),
+                  Text(
+                    'PulseSync Operations',
+                    style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                  Text(
+                    'Offline-First Emergency Dispatch',
+                    style: TextStyle(color: Colors.white70, fontSize: 12),
+                  ),
+                ],
+              ),
+            ),
+            ListTile(
+              leading: const Icon(Icons.crisis_alert_rounded, color: Colors.redAccent),
+              title: const Text('Instant SOS Distress Beacon', style: TextStyle(fontWeight: FontWeight.bold)),
+              subtitle: const Text('Trigger immediate 1-tap distress signal'),
+              onTap: () {
+                Navigator.pop(context);
+                SosBeaconDialog.show(context);
+              },
+            ),
+            const Divider(),
+            ListTile(
+              leading: const Icon(Icons.medical_services_rounded, color: Colors.teal),
+              title: const Text('Offline First-Aid Survival Guide'),
+              subtitle: const Text('CPR, Bleeding, Burns, Snakebite steps'),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(context, MaterialPageRoute(builder: (_) => const EmergencyGuideScreen()));
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.flash_on_rounded, color: Colors.amber),
+              title: const Text('Night Rescue Strobe Beacon'),
+              subtitle: const Text('High-visibility signal for dark disaster zones'),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(context, MaterialPageRoute(builder: (_) => const NightBeaconScreen()));
+              },
+            ),
+            const Divider(),
+            ListTile(
+              leading: Icon(
+                _isLocationEnabled ? Icons.location_on : Icons.location_off,
+                color: _isLocationEnabled ? Colors.green : Colors.orange,
+              ),
+              title: Text(_isLocationEnabled ? 'GPS Tracking Active' : 'Enable Location Permission'),
+              onTap: () {
+                Navigator.pop(context);
+                _requestLocationPermission();
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.sync_rounded),
+              title: const Text('Force Cloud Sync Now'),
+              onTap: () {
+                Navigator.pop(context);
+                _performManualSync();
+              },
+            ),
+          ],
+        ),
       ),
       body: Column(
         children: [
@@ -184,86 +284,109 @@ class _IncidentListScreenState extends ConsumerState<IncidentListScreen> {
           Expanded(
             child: incidentsAsync.when(
               data: (incidents) {
-                if (incidents.isEmpty) {
-                  return Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.assignment_turned_in_outlined, size: 64, color: Colors.grey.shade400),
-                        const SizedBox(height: 16),
-                        const Text(
-                          'No incidents recorded yet.',
-                          style: TextStyle(fontSize: 16, color: Colors.grey),
-                        ),
-                        const SizedBox(height: 8),
-                        const Text(
-                          'Tap + to report an incident offline or online.',
-                          style: TextStyle(fontSize: 14, color: Colors.grey),
-                        ),
-                      ],
-                    ),
-                  );
-                }
+                final criticalCount = incidents.where((i) => i.priority == AppConstants.priorityCritical).length;
+                final queuedCount = incidents.where((i) => !i.isSynced).length;
+                final syncedCount = incidents.where((i) => i.isSynced).length;
 
-                return ListView.separated(
-                  padding: const EdgeInsets.all(12),
-                  itemCount: incidents.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: 8),
-                  itemBuilder: (ctx, index) {
-                    final item = incidents[index];
-                    final dateStr = DateFormat('MMM d, HH:mm').format(item.createdAt);
-
-                    return Card(
-                      elevation: 2,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                      child: ListTile(
-                        leading: CircleAvatar(
-                          backgroundColor: _getPriorityColor(item.priority).withValues(alpha: 0.2),
-                          child: Icon(
-                            _getCategoryIcon(item.category),
-                            color: _getPriorityColor(item.priority),
-                          ),
-                        ),
-                        title: Text(
-                          item.title,
-                          style: const TextStyle(fontWeight: FontWeight.bold),
-                        ),
-                        subtitle: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            if (item.description != null && item.description!.isNotEmpty)
-                              Text(
-                                item.description!,
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            const SizedBox(height: 4),
-                            Text(
-                              '[${item.category}] • ${item.status.toUpperCase()} • $dateStr',
-                              style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
-                            ),
-                          ],
-                        ),
-                        trailing: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(
-                              item.isSynced ? Icons.cloud_done : Icons.cloud_upload_outlined,
-                              color: item.isSynced ? Colors.teal : Colors.orange,
-                              size: 22,
-                            ),
-                            Text(
-                              item.isSynced ? 'Synced' : 'Queued',
-                              style: TextStyle(
-                                fontSize: 10,
-                                color: item.isSynced ? Colors.teal : Colors.orange,
-                              ),
-                            ),
-                          ],
-                        ),
+                return Column(
+                  children: [
+                    // Tactical KPI Summary Strip
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      child: Row(
+                        children: [
+                          _buildKpiCard('Total', '${incidents.length}', Colors.blueGrey),
+                          const SizedBox(width: 6),
+                          _buildKpiCard('Critical', '$criticalCount', Colors.redAccent),
+                          const SizedBox(width: 6),
+                          _buildKpiCard('Queued', '$queuedCount', Colors.orange),
+                          const SizedBox(width: 6),
+                          _buildKpiCard('Synced', '$syncedCount', Colors.teal),
+                        ],
                       ),
-                    );
-                  },
+                    ),
+                    Expanded(
+                      child: incidents.isEmpty
+                          ? Center(
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(Icons.assignment_turned_in_outlined, size: 64, color: Colors.grey.shade400),
+                                  const SizedBox(height: 16),
+                                  const Text(
+                                    'No incidents recorded yet.',
+                                    style: TextStyle(fontSize: 16, color: Colors.grey),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  const Text(
+                                    'Tap + or SOS to report an emergency.',
+                                    style: TextStyle(fontSize: 14, color: Colors.grey),
+                                  ),
+                                ],
+                              ),
+                            )
+                          : ListView.separated(
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                              itemCount: incidents.length,
+                              separatorBuilder: (_, __) => const SizedBox(height: 8),
+                              itemBuilder: (ctx, index) {
+                                final item = incidents[index];
+                                final dateStr = DateFormat('MMM d, HH:mm').format(item.createdAt);
+
+                                return Card(
+                                  elevation: 2,
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                  child: ListTile(
+                                    leading: CircleAvatar(
+                                      backgroundColor: _getPriorityColor(item.priority).withValues(alpha: 0.2),
+                                      child: Icon(
+                                        _getCategoryIcon(item.category),
+                                        color: _getPriorityColor(item.priority),
+                                      ),
+                                    ),
+                                    title: Text(
+                                      item.title,
+                                      style: const TextStyle(fontWeight: FontWeight.bold),
+                                    ),
+                                    subtitle: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        if (item.description != null && item.description!.isNotEmpty)
+                                          Text(
+                                            item.description!,
+                                            maxLines: 2,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          '[${item.category}] • ${item.status.toUpperCase()} • $dateStr',
+                                          style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                                        ),
+                                      ],
+                                    ),
+                                    trailing: Column(
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      children: [
+                                        Icon(
+                                          item.isSynced ? Icons.cloud_done : Icons.cloud_upload_outlined,
+                                          color: item.isSynced ? Colors.teal : Colors.orange,
+                                          size: 22,
+                                        ),
+                                        Text(
+                                          item.isSynced ? 'Synced' : 'Queued',
+                                          style: TextStyle(
+                                            fontSize: 10,
+                                            color: item.isSynced ? Colors.teal : Colors.orange,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                    ),
+                  ],
                 );
               },
               loading: () => const Center(child: CircularProgressIndicator()),
@@ -274,6 +397,32 @@ class _IncidentListScreenState extends ConsumerState<IncidentListScreen> {
       ),
       bottomNavigationBar: _buildBottomNav(),
       floatingActionButton: _buildFab(),
+    );
+  }
+
+  Widget _buildKpiCard(String label, String value, Color color) {
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.12),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: color.withValues(alpha: 0.3)),
+        ),
+        child: Column(
+          children: [
+            Text(
+              value,
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: color),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              label,
+              style: TextStyle(fontSize: 10, color: Colors.grey.shade400, fontWeight: FontWeight.w500),
+            ),
+          ],
+        ),
+      ),
     );
   }
 

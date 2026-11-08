@@ -25,6 +25,7 @@ class IncidentCategory(str, enum.Enum):
     MEDICAL = "Medical"
     FLOOD = "Flood"
     ROAD_ACCIDENT = "Road Accident"
+    SOS = "SOS Panic"
     GENERAL = "General"
 
 

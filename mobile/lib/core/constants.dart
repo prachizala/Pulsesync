@@ -22,6 +22,7 @@ class AppConstants {
   static const String categoryMedical = 'Medical';
   static const String categoryFlood = 'Flood';
   static const String categoryRoadAccident = 'Road Accident';
+  static const String categorySOS = 'SOS Panic';
   static const String categoryGeneral = 'General';
 
   // Incident Status Constants

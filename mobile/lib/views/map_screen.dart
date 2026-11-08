@@ -18,6 +18,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   final MapController _mapController = MapController();
   LatLng? _currentPosition;
   bool _isLocating = false;
+  bool _showRadarRings = true;
 
   @override
   void initState() {
@@ -59,6 +60,8 @@ class _MapScreenState extends ConsumerState<MapScreen> {
 
   IconData _getCategoryIcon(String category) {
     switch (category) {
+      case AppConstants.categorySOS:
+        return Icons.crisis_alert_rounded;
       case AppConstants.categoryFire:
         return Icons.local_fire_department_rounded;
       case AppConstants.categoryMedical:
@@ -85,8 +88,16 @@ class _MapScreenState extends ConsumerState<MapScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Field Operations Map (India)'),
+        title: const Text('Tactical Operations Map'),
         actions: [
+          IconButton(
+            tooltip: _showRadarRings ? 'Hide Radar Rings' : 'Show Radar Rings',
+            icon: Icon(
+              Icons.radar_rounded,
+              color: _showRadarRings ? Colors.cyanAccent : Colors.white60,
+            ),
+            onPressed: () => setState(() => _showRadarRings = !_showRadarRings),
+          ),
           IconButton(
             tooltip: 'Go to My Exact GPS Location',
             icon: _isLocating
@@ -238,6 +249,38 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                     urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
                     userAgentPackageName: 'com.pulsesync.app',
                   ),
+                  if (_showRadarRings && _currentPosition != null)
+                    CircleLayer(
+                      circles: [
+                        // 500m Red Hazard Ring
+                        CircleMarker(
+                          point: _currentPosition!,
+                          radius: 500,
+                          useRadiusInMeter: true,
+                          color: Colors.redAccent.withValues(alpha: 0.08),
+                          borderColor: Colors.redAccent.withValues(alpha: 0.7),
+                          borderStrokeWidth: 1.5,
+                        ),
+                        // 1000m Orange Warning Ring
+                        CircleMarker(
+                          point: _currentPosition!,
+                          radius: 1000,
+                          useRadiusInMeter: true,
+                          color: Colors.orangeAccent.withValues(alpha: 0.04),
+                          borderColor: Colors.orangeAccent.withValues(alpha: 0.5),
+                          borderStrokeWidth: 1.2,
+                        ),
+                        // 2500m Cyan Perimeter Ring
+                        CircleMarker(
+                          point: _currentPosition!,
+                          radius: 2500,
+                          useRadiusInMeter: true,
+                          color: Colors.cyan.withValues(alpha: 0.02),
+                          borderColor: Colors.cyan.withValues(alpha: 0.4),
+                          borderStrokeWidth: 1.0,
+                        ),
+                      ],
+                    ),
                   MarkerLayer(markers: markers),
                 ],
               ),
