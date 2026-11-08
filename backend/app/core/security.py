@@ -1,5 +1,5 @@
 from datetime import datetime, timedelta, timezone
-from typing import Any, Union
+from typing import Any, Union, Optional
 import jwt
 from passlib.context import CryptContext
 from app.core.config import settings
@@ -18,6 +18,7 @@ def get_password_hash(password: str) -> str:
 def create_access_token(
     subject: Union[str, Any],
     role: str,
+    email: Optional[str] = None,
     expires_delta: Union[timedelta, None] = None,
 ) -> str:
     if expires_delta:
@@ -32,6 +33,9 @@ def create_access_token(
         "sub": str(subject),
         "role": role,
     }
+    if email:
+        to_encode["email"] = email
+
     encoded_jwt = jwt.encode(
         to_encode,
         settings.SECRET_KEY,
