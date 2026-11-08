@@ -11,6 +11,13 @@ class AppConstants {
   static const String priorityHigh = 'high';
   static const String priorityCritical = 'critical';
 
+  // Incident Categories
+  static const String categoryFire = 'Fire';
+  static const String categoryMedical = 'Medical';
+  static const String categoryFlood = 'Flood';
+  static const String categoryRoadAccident = 'Road Accident';
+  static const String categoryGeneral = 'General';
+
   // Incident Status Constants
   static const String statusReported = 'reported';
   static const String statusDispatched = 'dispatched';

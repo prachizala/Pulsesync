@@ -22,6 +22,7 @@ class _IncidentReportScreenState extends ConsumerState<IncidentReportScreen> {
   final _latController = TextEditingController(text: '37.7749');
   final _lonController = TextEditingController(text: '-122.4194');
 
+  String _selectedCategory = AppConstants.categoryMedical;
   String _selectedPriority = AppConstants.priorityHigh;
   bool _isLoadingGps = false;
   bool _isSaving = false;
@@ -92,6 +93,7 @@ class _IncidentReportScreenState extends ConsumerState<IncidentReportScreen> {
       LocalIncidentsCompanion(
         clientId: drift.Value(clientId),
         title: drift.Value(_titleController.text.trim()),
+        category: drift.Value(_selectedCategory),
         description: drift.Value(_descriptionController.text.trim()),
         status: const drift.Value(AppConstants.statusReported),
         priority: drift.Value(_selectedPriority),
@@ -157,6 +159,25 @@ class _IncidentReportScreenState extends ConsumerState<IncidentReportScreen> {
                   hintText: 'Describe severity, trapped victims, hazards...',
                   border: OutlineInputBorder(),
                 ),
+              ),
+              const SizedBox(height: 16),
+              DropdownButtonFormField<String>(
+                initialValue: _selectedCategory,
+                decoration: const InputDecoration(
+                  labelText: 'Emergency Category',
+                  prefixIcon: Icon(Icons.category_rounded),
+                  border: OutlineInputBorder(),
+                ),
+                items: const [
+                  DropdownMenuItem(value: AppConstants.categoryFire, child: Text('🔥 Fire & Hazard')),
+                  DropdownMenuItem(value: AppConstants.categoryMedical, child: Text('🚑 Medical Emergency')),
+                  DropdownMenuItem(value: AppConstants.categoryFlood, child: Text('🌊 Flood / Natural Disaster')),
+                  DropdownMenuItem(value: AppConstants.categoryRoadAccident, child: Text('🚗 Road Accident')),
+                  DropdownMenuItem(value: AppConstants.categoryGeneral, child: Text('⚠️ General / Other')),
+                ],
+                onChanged: (val) {
+                  if (val != null) setState(() => _selectedCategory = val);
+                },
               ),
               const SizedBox(height: 16),
               DropdownButtonFormField<String>(

@@ -47,6 +47,7 @@ class SyncService {
         return {
           'client_id': inc.clientId,
           'title': inc.title,
+          'category': inc.category,
           'description': inc.description,
           'status': inc.status,
           'priority': inc.priority,
@@ -90,6 +91,7 @@ class SyncService {
       for (final raw in incomingIncidents) {
         final clientId = raw['client_id'] as String;
         final title = raw['title'] as String;
+        final category = (raw['category'] as String?) ?? 'General';
         final desc = raw['description'] as String?;
         final status = raw['status'] as String;
         final priority = raw['priority'] as String;
@@ -103,6 +105,7 @@ class SyncService {
           LocalIncidentsCompanion(
             clientId: Value(clientId),
             title: Value(title),
+            category: Value(category),
             description: Value(desc),
             status: Value(status),
             priority: Value(priority),

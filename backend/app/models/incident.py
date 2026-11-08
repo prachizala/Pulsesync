@@ -20,12 +20,23 @@ class IncidentPriority(str, enum.Enum):
     CRITICAL = "critical"
 
 
+class IncidentCategory(str, enum.Enum):
+    FIRE = "Fire"
+    MEDICAL = "Medical"
+    FLOOD = "Flood"
+    ROAD_ACCIDENT = "Road Accident"
+    GENERAL = "General"
+
+
 class Incident(Base):
     __tablename__ = "incidents"
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True, autoincrement=True)
     client_id: Mapped[str] = mapped_column(String(64), unique=True, index=True, nullable=False)
     title: Mapped[str] = mapped_column(String(255), nullable=False)
+    category: Mapped[str] = mapped_column(
+        String(50), default=IncidentCategory.GENERAL.value, index=True, nullable=False
+    )
     description: Mapped[str] = mapped_column(Text, nullable=True)
     status: Mapped[str] = mapped_column(
         String(50), default=IncidentStatus.REPORTED.value, index=True, nullable=False

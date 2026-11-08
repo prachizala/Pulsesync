@@ -33,6 +33,21 @@ class _IncidentListScreenState extends ConsumerState<IncidentListScreen> {
     }
   }
 
+  IconData _getCategoryIcon(String category) {
+    switch (category) {
+      case AppConstants.categoryFire:
+        return Icons.local_fire_department_rounded;
+      case AppConstants.categoryMedical:
+        return Icons.medical_services_rounded;
+      case AppConstants.categoryFlood:
+        return Icons.water_drop_rounded;
+      case AppConstants.categoryRoadAccident:
+        return Icons.car_crash_rounded;
+      default:
+        return Icons.warning_amber_rounded;
+    }
+  }
+
   Future<void> _performManualSync() async {
     setState(() => _isManualSyncing = true);
     final syncService = ref.read(syncServiceProvider);
@@ -149,7 +164,7 @@ class _IncidentListScreenState extends ConsumerState<IncidentListScreen> {
                         leading: CircleAvatar(
                           backgroundColor: _getPriorityColor(item.priority).withValues(alpha: 0.2),
                           child: Icon(
-                            Icons.warning_amber_rounded,
+                            _getCategoryIcon(item.category),
                             color: _getPriorityColor(item.priority),
                           ),
                         ),
@@ -168,7 +183,7 @@ class _IncidentListScreenState extends ConsumerState<IncidentListScreen> {
                               ),
                             const SizedBox(height: 4),
                             Text(
-                              'Status: ${item.status.toUpperCase()} • $dateStr',
+                              '[${item.category}] • ${item.status.toUpperCase()} • $dateStr',
                               style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
                             ),
                           ],

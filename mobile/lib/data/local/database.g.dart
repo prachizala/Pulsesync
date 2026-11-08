@@ -34,6 +34,14 @@ class $LocalIncidentsTable extends LocalIncidents
           GeneratedColumn.checkTextLength(minTextLength: 1, maxTextLength: 255),
       type: DriftSqlType.string,
       requiredDuringInsert: true);
+  static const VerificationMeta _categoryMeta =
+      const VerificationMeta('category');
+  @override
+  late final GeneratedColumn<String> category = GeneratedColumn<String>(
+      'category', aliasedName, false,
+      type: DriftSqlType.string,
+      requiredDuringInsert: false,
+      defaultValue: const Constant('General'));
   static const VerificationMeta _descriptionMeta =
       const VerificationMeta('description');
   @override
@@ -108,6 +116,7 @@ class $LocalIncidentsTable extends LocalIncidents
         id,
         clientId,
         title,
+        category,
         description,
         status,
         priority,
@@ -143,6 +152,10 @@ class $LocalIncidentsTable extends LocalIncidents
           _titleMeta, title.isAcceptableOrUnknown(data['title']!, _titleMeta));
     } else if (isInserting) {
       context.missing(_titleMeta);
+    }
+    if (data.containsKey('category')) {
+      context.handle(_categoryMeta,
+          category.isAcceptableOrUnknown(data['category']!, _categoryMeta));
     }
     if (data.containsKey('description')) {
       context.handle(
@@ -211,6 +224,8 @@ class $LocalIncidentsTable extends LocalIncidents
           .read(DriftSqlType.string, data['${effectivePrefix}client_id'])!,
       title: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}title'])!,
+      category: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}category'])!,
       description: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}description']),
       status: attachedDatabase.typeMapping
@@ -244,6 +259,7 @@ class LocalIncident extends DataClass implements Insertable<LocalIncident> {
   final int id;
   final String clientId;
   final String title;
+  final String category;
   final String? description;
   final String status;
   final String priority;
@@ -258,6 +274,7 @@ class LocalIncident extends DataClass implements Insertable<LocalIncident> {
       {required this.id,
       required this.clientId,
       required this.title,
+      required this.category,
       this.description,
       required this.status,
       required this.priority,
@@ -274,6 +291,7 @@ class LocalIncident extends DataClass implements Insertable<LocalIncident> {
     map['id'] = Variable<int>(id);
     map['client_id'] = Variable<String>(clientId);
     map['title'] = Variable<String>(title);
+    map['category'] = Variable<String>(category);
     if (!nullToAbsent || description != null) {
       map['description'] = Variable<String>(description);
     }
@@ -296,6 +314,7 @@ class LocalIncident extends DataClass implements Insertable<LocalIncident> {
       id: Value(id),
       clientId: Value(clientId),
       title: Value(title),
+      category: Value(category),
       description: description == null && nullToAbsent
           ? const Value.absent()
           : Value(description),
@@ -320,6 +339,7 @@ class LocalIncident extends DataClass implements Insertable<LocalIncident> {
       id: serializer.fromJson<int>(json['id']),
       clientId: serializer.fromJson<String>(json['clientId']),
       title: serializer.fromJson<String>(json['title']),
+      category: serializer.fromJson<String>(json['category']),
       description: serializer.fromJson<String?>(json['description']),
       status: serializer.fromJson<String>(json['status']),
       priority: serializer.fromJson<String>(json['priority']),
@@ -339,6 +359,7 @@ class LocalIncident extends DataClass implements Insertable<LocalIncident> {
       'id': serializer.toJson<int>(id),
       'clientId': serializer.toJson<String>(clientId),
       'title': serializer.toJson<String>(title),
+      'category': serializer.toJson<String>(category),
       'description': serializer.toJson<String?>(description),
       'status': serializer.toJson<String>(status),
       'priority': serializer.toJson<String>(priority),
@@ -356,6 +377,7 @@ class LocalIncident extends DataClass implements Insertable<LocalIncident> {
           {int? id,
           String? clientId,
           String? title,
+          String? category,
           Value<String?> description = const Value.absent(),
           String? status,
           String? priority,
@@ -370,6 +392,7 @@ class LocalIncident extends DataClass implements Insertable<LocalIncident> {
         id: id ?? this.id,
         clientId: clientId ?? this.clientId,
         title: title ?? this.title,
+        category: category ?? this.category,
         description: description.present ? description.value : this.description,
         status: status ?? this.status,
         priority: priority ?? this.priority,
@@ -387,6 +410,7 @@ class LocalIncident extends DataClass implements Insertable<LocalIncident> {
       id: data.id.present ? data.id.value : this.id,
       clientId: data.clientId.present ? data.clientId.value : this.clientId,
       title: data.title.present ? data.title.value : this.title,
+      category: data.category.present ? data.category.value : this.category,
       description:
           data.description.present ? data.description.value : this.description,
       status: data.status.present ? data.status.value : this.status,
@@ -409,6 +433,7 @@ class LocalIncident extends DataClass implements Insertable<LocalIncident> {
           ..write('id: $id, ')
           ..write('clientId: $clientId, ')
           ..write('title: $title, ')
+          ..write('category: $category, ')
           ..write('description: $description, ')
           ..write('status: $status, ')
           ..write('priority: $priority, ')
@@ -428,6 +453,7 @@ class LocalIncident extends DataClass implements Insertable<LocalIncident> {
       id,
       clientId,
       title,
+      category,
       description,
       status,
       priority,
@@ -445,6 +471,7 @@ class LocalIncident extends DataClass implements Insertable<LocalIncident> {
           other.id == this.id &&
           other.clientId == this.clientId &&
           other.title == this.title &&
+          other.category == this.category &&
           other.description == this.description &&
           other.status == this.status &&
           other.priority == this.priority &&
@@ -461,6 +488,7 @@ class LocalIncidentsCompanion extends UpdateCompanion<LocalIncident> {
   final Value<int> id;
   final Value<String> clientId;
   final Value<String> title;
+  final Value<String> category;
   final Value<String?> description;
   final Value<String> status;
   final Value<String> priority;
@@ -475,6 +503,7 @@ class LocalIncidentsCompanion extends UpdateCompanion<LocalIncident> {
     this.id = const Value.absent(),
     this.clientId = const Value.absent(),
     this.title = const Value.absent(),
+    this.category = const Value.absent(),
     this.description = const Value.absent(),
     this.status = const Value.absent(),
     this.priority = const Value.absent(),
@@ -490,6 +519,7 @@ class LocalIncidentsCompanion extends UpdateCompanion<LocalIncident> {
     this.id = const Value.absent(),
     required String clientId,
     required String title,
+    this.category = const Value.absent(),
     this.description = const Value.absent(),
     this.status = const Value.absent(),
     this.priority = const Value.absent(),
@@ -510,6 +540,7 @@ class LocalIncidentsCompanion extends UpdateCompanion<LocalIncident> {
     Expression<int>? id,
     Expression<String>? clientId,
     Expression<String>? title,
+    Expression<String>? category,
     Expression<String>? description,
     Expression<String>? status,
     Expression<String>? priority,
@@ -525,6 +556,7 @@ class LocalIncidentsCompanion extends UpdateCompanion<LocalIncident> {
       if (id != null) 'id': id,
       if (clientId != null) 'client_id': clientId,
       if (title != null) 'title': title,
+      if (category != null) 'category': category,
       if (description != null) 'description': description,
       if (status != null) 'status': status,
       if (priority != null) 'priority': priority,
@@ -542,6 +574,7 @@ class LocalIncidentsCompanion extends UpdateCompanion<LocalIncident> {
       {Value<int>? id,
       Value<String>? clientId,
       Value<String>? title,
+      Value<String>? category,
       Value<String?>? description,
       Value<String>? status,
       Value<String>? priority,
@@ -556,6 +589,7 @@ class LocalIncidentsCompanion extends UpdateCompanion<LocalIncident> {
       id: id ?? this.id,
       clientId: clientId ?? this.clientId,
       title: title ?? this.title,
+      category: category ?? this.category,
       description: description ?? this.description,
       status: status ?? this.status,
       priority: priority ?? this.priority,
@@ -580,6 +614,9 @@ class LocalIncidentsCompanion extends UpdateCompanion<LocalIncident> {
     }
     if (title.present) {
       map['title'] = Variable<String>(title.value);
+    }
+    if (category.present) {
+      map['category'] = Variable<String>(category.value);
     }
     if (description.present) {
       map['description'] = Variable<String>(description.value);
@@ -620,6 +657,7 @@ class LocalIncidentsCompanion extends UpdateCompanion<LocalIncident> {
           ..write('id: $id, ')
           ..write('clientId: $clientId, ')
           ..write('title: $title, ')
+          ..write('category: $category, ')
           ..write('description: $description, ')
           ..write('status: $status, ')
           ..write('priority: $priority, ')
@@ -1416,6 +1454,7 @@ typedef $$LocalIncidentsTableCreateCompanionBuilder = LocalIncidentsCompanion
   Value<int> id,
   required String clientId,
   required String title,
+  Value<String> category,
   Value<String?> description,
   Value<String> status,
   Value<String> priority,
@@ -1432,6 +1471,7 @@ typedef $$LocalIncidentsTableUpdateCompanionBuilder = LocalIncidentsCompanion
   Value<int> id,
   Value<String> clientId,
   Value<String> title,
+  Value<String> category,
   Value<String?> description,
   Value<String> status,
   Value<String> priority,
@@ -1461,6 +1501,9 @@ class $$LocalIncidentsTableFilterComposer
 
   ColumnFilters<String> get title => $composableBuilder(
       column: $table.title, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get category => $composableBuilder(
+      column: $table.category, builder: (column) => ColumnFilters(column));
 
   ColumnFilters<String> get description => $composableBuilder(
       column: $table.description, builder: (column) => ColumnFilters(column));
@@ -1511,6 +1554,9 @@ class $$LocalIncidentsTableOrderingComposer
   ColumnOrderings<String> get title => $composableBuilder(
       column: $table.title, builder: (column) => ColumnOrderings(column));
 
+  ColumnOrderings<String> get category => $composableBuilder(
+      column: $table.category, builder: (column) => ColumnOrderings(column));
+
   ColumnOrderings<String> get description => $composableBuilder(
       column: $table.description, builder: (column) => ColumnOrderings(column));
 
@@ -1560,6 +1606,9 @@ class $$LocalIncidentsTableAnnotationComposer
 
   GeneratedColumn<String> get title =>
       $composableBuilder(column: $table.title, builder: (column) => column);
+
+  GeneratedColumn<String> get category =>
+      $composableBuilder(column: $table.category, builder: (column) => column);
 
   GeneratedColumn<String> get description => $composableBuilder(
       column: $table.description, builder: (column) => column);
@@ -1622,6 +1671,7 @@ class $$LocalIncidentsTableTableManager extends RootTableManager<
             Value<int> id = const Value.absent(),
             Value<String> clientId = const Value.absent(),
             Value<String> title = const Value.absent(),
+            Value<String> category = const Value.absent(),
             Value<String?> description = const Value.absent(),
             Value<String> status = const Value.absent(),
             Value<String> priority = const Value.absent(),
@@ -1637,6 +1687,7 @@ class $$LocalIncidentsTableTableManager extends RootTableManager<
             id: id,
             clientId: clientId,
             title: title,
+            category: category,
             description: description,
             status: status,
             priority: priority,
@@ -1652,6 +1703,7 @@ class $$LocalIncidentsTableTableManager extends RootTableManager<
             Value<int> id = const Value.absent(),
             required String clientId,
             required String title,
+            Value<String> category = const Value.absent(),
             Value<String?> description = const Value.absent(),
             Value<String> status = const Value.absent(),
             Value<String> priority = const Value.absent(),
@@ -1667,6 +1719,7 @@ class $$LocalIncidentsTableTableManager extends RootTableManager<
             id: id,
             clientId: clientId,
             title: title,
+            category: category,
             description: description,
             status: status,
             priority: priority,

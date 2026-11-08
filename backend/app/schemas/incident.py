@@ -1,11 +1,12 @@
 from datetime import datetime
 from typing import Optional
 from pydantic import BaseModel, ConfigDict
-from app.models.incident import IncidentStatus, IncidentPriority
+from app.models.incident import IncidentStatus, IncidentPriority, IncidentCategory
 
 
 class IncidentBase(BaseModel):
     title: str
+    category: IncidentCategory = IncidentCategory.GENERAL
     description: Optional[str] = None
     status: IncidentStatus = IncidentStatus.REPORTED
     priority: IncidentPriority = IncidentPriority.MEDIUM
@@ -20,6 +21,7 @@ class IncidentCreate(IncidentBase):
 
 class IncidentUpdate(BaseModel):
     title: Optional[str] = None
+    category: Optional[IncidentCategory] = None
     description: Optional[str] = None
     status: Optional[IncidentStatus] = None
     priority: Optional[IncidentPriority] = None

@@ -7,6 +7,7 @@ class LocalIncidents extends Table {
   IntColumn get id => integer().autoIncrement()();
   TextColumn get clientId => text().unique()();
   TextColumn get title => text().withLength(min: 1, max: 255)();
+  TextColumn get category => text().withDefault(const Constant('General'))();
   TextColumn get description => text().nullable()();
   TextColumn get status => text().withDefault(const Constant('reported'))();
   TextColumn get priority => text().withDefault(const Constant('medium'))();

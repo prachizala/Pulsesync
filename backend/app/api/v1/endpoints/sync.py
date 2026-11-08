@@ -45,6 +45,7 @@ async def sync_push(
             new_incident = Incident(
                 client_id=item.client_id,
                 title=item.title,
+                category=item.category.value,
                 description=item.description,
                 status=item.status.value,
                 priority=item.priority.value,
@@ -78,6 +79,7 @@ async def sync_push(
             # Conflict / version resolution
             if item.version > existing.version:
                 existing.title = item.title
+                existing.category = item.category.value
                 existing.description = item.description
                 existing.status = item.status.value
                 existing.priority = item.priority.value

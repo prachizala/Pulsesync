@@ -32,6 +32,7 @@ async def create_incident(
     incident = Incident(
         client_id=incident_in.client_id,
         title=incident_in.title,
+        category=incident_in.category.value,
         description=incident_in.description,
         status=incident_in.status.value,
         priority=incident_in.priority.value,

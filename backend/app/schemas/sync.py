@@ -1,13 +1,14 @@
 from datetime import datetime, timezone
 from typing import List, Optional
 from pydantic import BaseModel
-from app.models.incident import IncidentStatus, IncidentPriority
+from app.models.incident import IncidentStatus, IncidentPriority, IncidentCategory
 from app.schemas.incident import IncidentResponse
 
 
 class SyncIncidentItem(BaseModel):
     client_id: str
     title: str
+    category: IncidentCategory = IncidentCategory.GENERAL
     description: Optional[str] = None
     status: IncidentStatus = IncidentStatus.REPORTED
     priority: IncidentPriority = IncidentPriority.MEDIUM
