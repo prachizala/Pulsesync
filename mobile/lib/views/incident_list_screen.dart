@@ -215,6 +215,27 @@ class _IncidentListScreenState extends ConsumerState<IncidentListScreen> {
                 : const Icon(Icons.sync),
             onPressed: _isManualSyncing ? null : _performManualSync,
           ),
+          Consumer(
+            builder: (context, ref, _) {
+              final themeMode = ref.watch(themeModeProvider);
+              final isDark = themeMode == ThemeMode.dark;
+              return IconButton(
+                tooltip: isDark ? 'Switch to Light Mode' : 'Switch to Dark Mode',
+                icon: AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 300),
+                  transitionBuilder: (child, anim) => RotationTransition(turns: anim, child: child),
+                  child: Icon(
+                    isDark ? Icons.light_mode_rounded : Icons.dark_mode_rounded,
+                    key: ValueKey(isDark),
+                    color: isDark ? Colors.amberAccent : Colors.white,
+                  ),
+                ),
+                onPressed: () {
+                  ref.read(themeModeProvider.notifier).toggleTheme();
+                },
+              );
+            },
+          ),
         ],
       ),
       drawer: Drawer(
@@ -301,6 +322,31 @@ class _IncidentListScreenState extends ConsumerState<IncidentListScreen> {
               onTap: () {
                 Navigator.pop(context);
                 _showServerIpDialog();
+              },
+            ),
+            const Divider(),
+            Consumer(
+              builder: (context, ref, _) {
+                final themeMode = ref.watch(themeModeProvider);
+                final isDark = themeMode == ThemeMode.dark;
+                return ListTile(
+                  leading: Icon(
+                    isDark ? Icons.dark_mode_rounded : Icons.light_mode_rounded,
+                    color: isDark ? Colors.amber : Colors.deepOrange,
+                  ),
+                  title: const Text('Theme Mode', style: TextStyle(fontWeight: FontWeight.w600)),
+                  subtitle: Text(isDark ? 'Dark Tactical Mode' : 'Light Clean Mode'),
+                  trailing: Switch(
+                    value: isDark,
+                    activeThumbColor: Colors.amber,
+                    onChanged: (val) {
+                      ref.read(themeModeProvider.notifier).setThemeMode(val ? ThemeMode.dark : ThemeMode.light);
+                    },
+                  ),
+                  onTap: () {
+                    ref.read(themeModeProvider.notifier).toggleTheme();
+                  },
+                );
               },
             ),
           ],
@@ -430,7 +476,12 @@ class _IncidentListScreenState extends ConsumerState<IncidentListScreen> {
                                         const SizedBox(height: 4),
                                         Text(
                                           '[${item.category}] • ${item.status.toUpperCase()} • $dateStr',
-                                          style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            color: Theme.of(context).brightness == Brightness.dark
+                                                ? Colors.grey.shade400
+                                                : Colors.grey.shade700,
+                                          ),
                                         ),
                                       ],
                                     ),
@@ -488,7 +539,13 @@ class _IncidentListScreenState extends ConsumerState<IncidentListScreen> {
             const SizedBox(height: 2),
             Text(
               label,
-              style: TextStyle(fontSize: 10, color: Colors.grey.shade400, fontWeight: FontWeight.w500),
+              style: TextStyle(
+                fontSize: 10,
+                color: Theme.of(context).brightness == Brightness.dark
+                    ? Colors.grey.shade400
+                    : Colors.grey.shade700,
+                fontWeight: FontWeight.w500,
+              ),
             ),
           ],
         ),

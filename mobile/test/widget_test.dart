@@ -32,4 +32,32 @@ void main() {
 
     await testDb.close();
   });
+
+  testWidgets('PulseSyncApp toggles between dark and light mode', (WidgetTester tester) async {
+    final testDb = AppDatabase.forTesting(NativeDatabase.memory());
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          databaseProvider.overrideWithValue(testDb),
+        ],
+        child: const PulseSyncApp(),
+      ),
+    );
+
+    await tester.pumpAndSettle();
+
+    // Verify initial dark mode theme tooltip
+    final themeToggleFinder = find.byTooltip('Switch to Light Mode');
+    expect(themeToggleFinder, findsOneWidget);
+
+    // Tap theme toggle
+    await tester.tap(themeToggleFinder);
+    await tester.pumpAndSettle();
+
+    // Verify switched to light mode
+    expect(find.byTooltip('Switch to Dark Mode'), findsOneWidget);
+
+    await testDb.close();
+  });
 }
