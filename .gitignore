@@ -56,3 +56,7 @@ Thumbs.db
 docker-data/
 postgres_data/
 redis_data/
+
+# Binaries & Packages
+*.apk
+*.aab
