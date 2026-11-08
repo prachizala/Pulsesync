@@ -19,13 +19,21 @@ class _IncidentReportScreenState extends ConsumerState<IncidentReportScreen> {
   final _formKey = GlobalKey<FormState>();
   final _titleController = TextEditingController();
   final _descriptionController = TextEditingController();
-  final _latController = TextEditingController(text: '37.7749');
-  final _lonController = TextEditingController(text: '-122.4194');
+  final _latController = TextEditingController(text: '${AppConstants.defaultIndiaLat}');
+  final _lonController = TextEditingController(text: '${AppConstants.defaultIndiaLon}');
 
   String _selectedCategory = AppConstants.categoryMedical;
   String _selectedPriority = AppConstants.priorityHigh;
   bool _isLoadingGps = false;
   bool _isSaving = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _detectGpsLocation();
+    });
+  }
 
   @override
   void dispose() {
