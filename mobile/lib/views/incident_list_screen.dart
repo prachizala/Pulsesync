@@ -2,11 +2,14 @@ import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
+import 'package:latlong2/latlong.dart';
 
 import '../core/constants.dart';
+import '../data/local/database.dart';
 import '../logic/location/location_service.dart';
 import '../logic/providers.dart';
 import 'emergency_guide_screen.dart';
+import 'incident_detail_modal.dart';
 import 'incident_report_screen.dart';
 import 'map_screen.dart';
 import 'night_beacon_screen.dart';
@@ -23,6 +26,7 @@ class _IncidentListScreenState extends ConsumerState<IncidentListScreen> {
   int _currentIndex = 0;
   bool _isManualSyncing = false;
   bool _isLocationEnabled = false;
+  final TextEditingController _searchController = TextEditingController();
 
   @override
   void initState() {
@@ -30,23 +34,43 @@ class _IncidentListScreenState extends ConsumerState<IncidentListScreen> {
     _checkLocationPermission();
   }
 
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
   Future<void> _checkLocationPermission() async {
     final granted = await LocationService.isLocationPermissionGranted();
     if (mounted) setState(() => _isLocationEnabled = granted);
+    if (granted && mounted) {
+      final pos = await LocationService.getCurrentPosition(context);
+      if (pos != null && mounted) {
+        ref.read(userLocationProvider.notifier).state = LatLng(pos.latitude, pos.longitude);
+      }
+    }
   }
 
   Future<void> _requestLocationPermission() async {
     final granted = await LocationService.requestLocationPermissionWithDialog(context);
     if (mounted) {
       setState(() => _isLocationEnabled = granted);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            granted ? 'Location tracking is active.' : 'Location permission denied.',
+      if (granted && mounted) {
+        final pos = await LocationService.getCurrentPosition(context);
+        if (pos != null && mounted) {
+          ref.read(userLocationProvider.notifier).state = LatLng(pos.latitude, pos.longitude);
+        }
+      }
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              granted ? 'Location tracking is active.' : 'Location permission denied.',
+            ),
+            backgroundColor: granted ? Colors.teal : Colors.orange,
           ),
-          backgroundColor: granted ? Colors.teal : Colors.orange,
-        ),
-      );
+        );
+      }
     }
   }
 
@@ -79,6 +103,98 @@ class _IncidentListScreenState extends ConsumerState<IncidentListScreen> {
       default:
         return Icons.warning_amber_rounded;
     }
+  }
+
+  String? _getCardDistanceBadge(LocalIncident item, LatLng? userPos) {
+    if (userPos == null) return null;
+    const distanceCalculator = Distance();
+    final meters = distanceCalculator.as(LengthUnit.Meter, userPos, LatLng(item.latitude, item.longitude));
+    if (meters < 1000) {
+      return '${meters.toInt()}m';
+    } else {
+      return '${(meters / 1000).toStringAsFixed(1)}km';
+    }
+  }
+
+  Widget _buildSearchAndFilterBar() {
+    final query = ref.watch(incidentSearchQueryProvider);
+    final selectedCategory = ref.watch(incidentCategoryFilterProvider);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    final categories = [
+      'All',
+      AppConstants.categorySOS,
+      AppConstants.categoryMedical,
+      AppConstants.categoryFire,
+      AppConstants.categoryFlood,
+      AppConstants.categoryRoadAccident,
+      'General'
+    ];
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+      child: Column(
+        children: [
+          // Search input field
+          Container(
+            height: 42,
+            decoration: BoxDecoration(
+              color: isDark ? const Color(0xFF1E2631) : Colors.white,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: isDark ? Colors.white12 : Colors.black12),
+            ),
+            child: TextField(
+              controller: _searchController,
+              onChanged: (val) => ref.read(incidentSearchQueryProvider.notifier).state = val,
+              decoration: InputDecoration(
+                hintText: 'Search incidents, triage tags, places...',
+                hintStyle: TextStyle(fontSize: 13, color: Colors.grey.shade500),
+                prefixIcon: const Icon(Icons.search, size: 20),
+                suffixIcon: query.isNotEmpty
+                    ? IconButton(
+                        icon: const Icon(Icons.clear, size: 16),
+                        onPressed: () {
+                          _searchController.clear();
+                          ref.read(incidentSearchQueryProvider.notifier).state = '';
+                        },
+                      )
+                    : null,
+                border: InputBorder.none,
+                contentPadding: const EdgeInsets.symmetric(vertical: 10),
+              ),
+              style: const TextStyle(fontSize: 13),
+            ),
+          ),
+          const SizedBox(height: 6),
+          // Category horizontal scroll chips
+          SizedBox(
+            height: 32,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              itemCount: categories.length,
+              separatorBuilder: (_, __) => const SizedBox(width: 6),
+              itemBuilder: (ctx, index) {
+                final cat = categories[index];
+                final isSelected = selectedCategory == cat;
+                return ChoiceChip(
+                  label: Text(
+                    cat,
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                    ),
+                  ),
+                  selected: isSelected,
+                  selectedColor: Colors.redAccent.withValues(alpha: 0.25),
+                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                  onSelected: (_) => ref.read(incidentCategoryFilterProvider.notifier).state = cat,
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> _performManualSync() async {
@@ -421,9 +537,16 @@ class _IncidentListScreenState extends ConsumerState<IncidentListScreen> {
                         ],
                       ),
                     ),
+                    // Search & Category Filter Bar
+                    _buildSearchAndFilterBar(),
                     Expanded(
-                      child: incidents.isEmpty
-                          ? Center(
+                      child: Builder(
+                        builder: (ctx) {
+                          final filteredList = ref.watch(filteredIncidentsProvider);
+                          final userPos = ref.watch(userLocationProvider);
+
+                          if (incidents.isEmpty) {
+                            return Center(
                               child: Column(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
@@ -440,18 +563,51 @@ class _IncidentListScreenState extends ConsumerState<IncidentListScreen> {
                                   ),
                                 ],
                               ),
-                            )
-                          : ListView.separated(
-                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                              itemCount: incidents.length,
-                              separatorBuilder: (_, __) => const SizedBox(height: 8),
-                              itemBuilder: (ctx, index) {
-                                final item = incidents[index];
-                                final dateStr = DateFormat('MMM d, HH:mm').format(item.createdAt);
+                            );
+                          }
 
-                                return Card(
-                                  elevation: 2,
-                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                          if (filteredList.isEmpty) {
+                            return Center(
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(Icons.filter_alt_off_rounded, size: 56, color: Colors.grey.shade400),
+                                  const SizedBox(height: 12),
+                                  const Text(
+                                    'No matching incidents found.',
+                                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    'Try changing search keyword or filter chip.',
+                                    style: TextStyle(fontSize: 13, color: Colors.grey.shade500),
+                                  ),
+                                ],
+                              ),
+                            );
+                          }
+
+                          return ListView.separated(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                            itemCount: filteredList.length,
+                            separatorBuilder: (_, __) => const SizedBox(height: 8),
+                            itemBuilder: (ctx, index) {
+                              final item = filteredList[index];
+                              final dateStr = DateFormat('MMM d, HH:mm').format(item.createdAt);
+                              final distanceBadge = _getCardDistanceBadge(item, userPos);
+
+                              return Card(
+                                elevation: 2,
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                child: InkWell(
+                                  borderRadius: BorderRadius.circular(10),
+                                  onTap: () {
+                                    IncidentDetailModal.show(
+                                      context,
+                                      item,
+                                      () => setState(() => _currentIndex = 1),
+                                    );
+                                  },
                                   child: ListTile(
                                     leading: CircleAvatar(
                                       backgroundColor: _getPriorityColor(item.priority).withValues(alpha: 0.2),
@@ -474,14 +630,40 @@ class _IncidentListScreenState extends ConsumerState<IncidentListScreen> {
                                             overflow: TextOverflow.ellipsis,
                                           ),
                                         const SizedBox(height: 4),
-                                        Text(
-                                          '[${item.category}] • ${item.status.toUpperCase()} • $dateStr',
-                                          style: TextStyle(
-                                            fontSize: 12,
-                                            color: Theme.of(context).brightness == Brightness.dark
-                                                ? Colors.grey.shade400
-                                                : Colors.grey.shade700,
-                                          ),
+                                        Row(
+                                          children: [
+                                            Expanded(
+                                              child: Text(
+                                                '[${item.category}] • ${item.status.toUpperCase()} • $dateStr',
+                                                style: TextStyle(
+                                                  fontSize: 11,
+                                                  color: Theme.of(context).brightness == Brightness.dark
+                                                      ? Colors.grey.shade400
+                                                      : Colors.grey.shade700,
+                                                ),
+                                                overflow: TextOverflow.ellipsis,
+                                              ),
+                                            ),
+                                            if (distanceBadge != null)
+                                              Container(
+                                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                                decoration: BoxDecoration(
+                                                  color: Colors.blueAccent.withValues(alpha: 0.15),
+                                                  borderRadius: BorderRadius.circular(4),
+                                                ),
+                                                child: Row(
+                                                  mainAxisSize: MainAxisSize.min,
+                                                  children: [
+                                                    const Icon(Icons.near_me_rounded, size: 10, color: Colors.blueAccent),
+                                                    const SizedBox(width: 3),
+                                                    Text(
+                                                      distanceBadge,
+                                                      style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.blueAccent),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                          ],
                                         ),
                                       ],
                                     ),
@@ -503,9 +685,12 @@ class _IncidentListScreenState extends ConsumerState<IncidentListScreen> {
                                       ],
                                     ),
                                   ),
-                                );
-                              },
-                            ),
+                                ),
+                              );
+                            },
+                          );
+                        },
+                      ),
                     ),
                   ],
                 );

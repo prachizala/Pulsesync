@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:drift/drift.dart' as drift;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -27,6 +28,11 @@ class _IncidentReportScreenState extends ConsumerState<IncidentReportScreen> {
   bool _isLoadingGps = false;
   bool _isSaving = false;
 
+  bool _isRecordingAudio = false;
+  int _audioDurationSeconds = 0;
+  bool _hasRecordedAudio = false;
+  Timer? _audioTimer;
+
   @override
   void initState() {
     super.initState();
@@ -37,11 +43,54 @@ class _IncidentReportScreenState extends ConsumerState<IncidentReportScreen> {
 
   @override
   void dispose() {
+    _audioTimer?.cancel();
     _titleController.dispose();
     _descriptionController.dispose();
     _latController.dispose();
     _lonController.dispose();
     super.dispose();
+  }
+
+  void _toggleAudioRecording() {
+    if (_isRecordingAudio) {
+      _stopAudioRecording();
+    } else {
+      _startAudioRecording();
+    }
+  }
+
+  void _startAudioRecording() {
+    setState(() {
+      _isRecordingAudio = true;
+      _audioDurationSeconds = 0;
+      _hasRecordedAudio = false;
+    });
+    _audioTimer?.cancel();
+    _audioTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (!mounted) return;
+      if (_audioDurationSeconds >= 30) {
+        _stopAudioRecording();
+      } else {
+        setState(() => _audioDurationSeconds++);
+      }
+    });
+  }
+
+  void _stopAudioRecording() {
+    _audioTimer?.cancel();
+    setState(() {
+      _isRecordingAudio = false;
+      _hasRecordedAudio = true;
+    });
+  }
+
+  void _deleteAudioRecording() {
+    _audioTimer?.cancel();
+    setState(() {
+      _isRecordingAudio = false;
+      _hasRecordedAudio = false;
+      _audioDurationSeconds = 0;
+    });
   }
 
   Future<void> _detectGpsLocation() async {
@@ -79,13 +128,21 @@ class _IncidentReportScreenState extends ConsumerState<IncidentReportScreen> {
     final lat = double.tryParse(_latController.text) ?? 0.0;
     final lon = double.tryParse(_lonController.text) ?? 0.0;
 
+    String finalDescription = _descriptionController.text.trim();
+    if (_hasRecordedAudio) {
+      final durationStr = '00:${_audioDurationSeconds.toString().padLeft(2, '0')}';
+      finalDescription = finalDescription.isEmpty
+          ? '[🎙️ Field Audio Situation Memo: $durationStr recorded]'
+          : '$finalDescription\n[🎙️ Field Audio Situation Memo: $durationStr recorded]';
+    }
+
     // 1. Save directly into local Drift DB (offline-first guarantee)
     await db.insertIncident(
       LocalIncidentsCompanion(
         clientId: drift.Value(clientId),
         title: drift.Value(_titleController.text.trim()),
         category: drift.Value(_selectedCategory),
-        description: drift.Value(_descriptionController.text.trim()),
+        description: drift.Value(finalDescription),
         status: const drift.Value(AppConstants.statusReported),
         priority: drift.Value(_selectedPriority),
         latitude: drift.Value(lat),
@@ -180,6 +237,9 @@ class _IncidentReportScreenState extends ConsumerState<IncidentReportScreen> {
                   );
                 }).toList(),
               ),
+              const SizedBox(height: 14),
+              // Emergency Audio Memo Recorder
+              _buildAudioMemoRecorder(),
               const SizedBox(height: 16),
               DropdownButtonFormField<String>(
                 initialValue: _selectedCategory,
@@ -270,6 +330,93 @@ class _IncidentReportScreenState extends ConsumerState<IncidentReportScreen> {
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildAudioMemoRecorder() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final timeStr = '00:${_audioDurationSeconds.toString().padLeft(2, '0')}';
+
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: _isRecordingAudio
+            ? Colors.red.withValues(alpha: 0.12)
+            : (_hasRecordedAudio
+                ? Colors.teal.withValues(alpha: 0.12)
+                : (isDark ? const Color(0xFF1E2631) : const Color(0xFFF1F5F9))),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: _isRecordingAudio
+              ? Colors.redAccent
+              : (_hasRecordedAudio ? Colors.teal : (isDark ? Colors.white12 : Colors.black12)),
+          width: _isRecordingAudio ? 1.5 : 1,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                _isRecordingAudio
+                    ? Icons.mic
+                    : (_hasRecordedAudio ? Icons.check_circle_rounded : Icons.mic_none_rounded),
+                color: _isRecordingAudio
+                    ? Colors.redAccent
+                    : (_hasRecordedAudio ? Colors.teal : Colors.blueAccent),
+                size: 20,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  _isRecordingAudio
+                      ? '🔴 Recording Situation Audio... ($timeStr / 00:30)'
+                      : (_hasRecordedAudio
+                          ? '✅ Situation Audio Memo Attached ($timeStr)'
+                          : 'Record Voice Situation Memo (Max 30s)'),
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    color: _isRecordingAudio
+                        ? Colors.redAccent
+                        : (_hasRecordedAudio ? Colors.teal : (isDark ? Colors.white70 : Colors.black87)),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: _isRecordingAudio ? Colors.redAccent : Colors.blueAccent,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                ),
+                icon: Icon(_isRecordingAudio ? Icons.stop_rounded : Icons.fiber_manual_record_rounded, size: 16),
+                label: Text(_isRecordingAudio ? 'Stop Recording' : (_hasRecordedAudio ? 'Re-record' : 'Start Recording')),
+                onPressed: _toggleAudioRecording,
+              ),
+              if (_hasRecordedAudio) ...[
+                const SizedBox(width: 8),
+                OutlinedButton.icon(
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: Colors.redAccent,
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  ),
+                  icon: const Icon(Icons.delete_outline_rounded, size: 16),
+                  label: const Text('Delete'),
+                  onPressed: _deleteAudioRecording,
+                ),
+              ],
+            ],
+          ),
+        ],
       ),
     );
   }

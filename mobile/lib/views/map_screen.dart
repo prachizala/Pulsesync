@@ -24,7 +24,13 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _detectAndCenterLocation();
+      final target = ref.read(targetMapLocationProvider);
+      if (target != null) {
+        _mapController.move(target, AppConstants.defaultZoomDetailed);
+        ref.read(targetMapLocationProvider.notifier).state = null;
+      } else {
+        _detectAndCenterLocation();
+      }
     });
   }
 
@@ -35,6 +41,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
       if (position != null) {
         final userLatLng = LatLng(position.latitude, position.longitude);
         setState(() => _currentPosition = userLatLng);
+        ref.read(userLocationProvider.notifier).state = userLatLng;
         _mapController.move(userLatLng, AppConstants.defaultZoomDetailed);
       }
     } catch (_) {

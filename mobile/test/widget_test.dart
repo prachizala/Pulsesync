@@ -60,4 +60,29 @@ void main() {
 
     await testDb.close();
   });
+
+  testWidgets('PulseSyncApp renders search bar and category filter chips', (WidgetTester tester) async {
+    final testDb = AppDatabase.forTesting(NativeDatabase.memory());
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          databaseProvider.overrideWithValue(testDb),
+        ],
+        child: const PulseSyncApp(),
+      ),
+    );
+
+    await tester.pumpAndSettle();
+
+    // Verify search input
+    expect(find.text('Search incidents, triage tags, places...'), findsOneWidget);
+
+    // Verify category chips
+    expect(find.text('All'), findsOneWidget);
+    expect(find.text('SOS'), findsOneWidget);
+    expect(find.text('Medical'), findsOneWidget);
+
+    await testDb.close();
+  });
 }

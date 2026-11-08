@@ -79,6 +79,16 @@ class AppDatabase extends _$AppDatabase {
     ).then((count) => count > 0);
   }
 
+  Future<bool> updateIncidentStatus(String clientId, String newStatus) {
+    return (update(localIncidents)..where((t) => t.clientId.equals(clientId))).write(
+      LocalIncidentsCompanion(
+        status: Value(newStatus),
+        isSynced: const Value(false),
+        updatedAt: Value(DateTime.now()),
+      ),
+    ).then((count) => count > 0);
+  }
+
   // --- DAO Methods for Sync Queue ---
 
   Future<int> enqueueSync({
