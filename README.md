@@ -11,6 +11,7 @@
 [![Redis](https://img.shields.io/badge/Redis-7%20Pub%2FSub-DC382D?style=flat-square&logo=redis&logoColor=white)](https://redis.io)
 [![Drift SQLite](https://img.shields.io/badge/Drift%20SQLite-2.20.0-003B57?style=flat-square&logo=sqlite&logoColor=white)](https://drift.simonbinder.eu)
 [![Tests Passing](https://img.shields.io/badge/Tests-100%25%20Passing-success?style=flat-square&logo=checkmarx&logoColor=white)](#-automated-testing-100-pass)
+[![CI/CD](https://img.shields.io/badge/CI%2FCD-GitHub%20Actions%20Passing-brightgreen?style=flat-square&logo=githubactions&logoColor=white)](https://github.com/prachizala/Pulsesync/actions)
 [![License](https://img.shields.io/badge/License-MIT-blue?style=flat-square)](#)
 
 <p align="center">
