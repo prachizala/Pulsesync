@@ -25,6 +25,7 @@ eggs/
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
+*.sqlite
 *.sqlite3
 *.db
 
